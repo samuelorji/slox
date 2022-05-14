@@ -1,0 +1,6 @@
+"1234"
+555.3646565
++ - * <= >=
+element = star
+// here's some stuff I don't care about
+( + - )
