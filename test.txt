@@ -1,6 +1,12 @@
-"1234"
-555.3646565
-+ - * <= >=
-element = star
+//"1234"
+//555.3646565
+//+ - * <= >=
+//element = star
 // here's some stuff I don't care about
-( + - )
+//( + - )
+
+//5 - 3 + (4* 3)
+//"hello" + " there"
+
+"hello " + 5
+2 / 1

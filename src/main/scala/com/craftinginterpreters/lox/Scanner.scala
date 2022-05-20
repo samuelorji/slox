@@ -3,10 +3,10 @@ package com.craftinginterpreters.lox
 
 import com.craftinginterpreters.lox.TokenType._
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 case class Scanner(source: String) {
-  private val tokens = ListBuffer.empty[Token]
+  private val tokens = ArrayBuffer.empty[Token]
 
   //val lox = Lox
 
@@ -39,7 +39,7 @@ case class Scanner(source: String) {
     current >= source.length
   }
 
-  def scanTokens: List[Token] = {
+  def scanTokens: Array[Token] = {
     while (!isAtEnd()) {
       // after each scan,
       // set current to start
@@ -48,7 +48,7 @@ case class Scanner(source: String) {
 
     }
     tokens.append(Token(EOF, "", null, line))
-    tokens.toList
+    tokens.toArray
   }
 
   private def scanToken() = {
