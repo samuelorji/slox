@@ -8,5 +8,11 @@
 //5 - 3 + (4* 3)
 //"hello" + " there"
 
-"hello " + 5
-2 / 1
+// "hello " + 5
+// 2 / 1
+print 34 ;
+89 + ;
+//print (40 +5);
+
+//print "one";
+//print true;

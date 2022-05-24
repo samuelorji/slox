@@ -4,7 +4,19 @@ import scala.reflect.ClassTag
 
 case class RuntimeError(val token: Token, val message: String) extends RuntimeException(message)
 
-object Interpreter extends Expr.Visitor[Any] {
+object Interpreter extends Expr.Visitor[Any]  with Stmt.Visitor[Any] {
+
+
+  override def visitExpressionStmt(stmt: Stmt.Expression): Any = {
+    val expressionResult = evaluate(stmt.expression)
+
+  }
+
+  override def visitPrintStmt(stmt: Stmt.Print): Any = {
+    val expressionResult = evaluate(stmt.expression)
+    println(stringify(expressionResult))
+  }
+
   override def visitBinaryExpr(expr: Expr.Binary): Any = {
     val left = evaluate(expr.left)
     val right = evaluate(expr.right)
@@ -23,15 +35,6 @@ object Interpreter extends Expr.Visitor[Any] {
           case _ =>
             throw RuntimeError(operator, "Operands must be two numbers or two strings.")
         }
-//        if (left.isInstanceOf[String] && right.isInstanceOf[String]){
-//          left.asInstanceOf[String] + right.asInstanceOf[String]
-//        }else if(left.isInstanceOf[Double] && right.isInstanceOf[Double]) {
-//          left.asInstanceOf[Double] + right.asInstanceOf[Double]
-//        } else if (left.isInstanceOf[String] && right.isInstanceOf[Double]){
-//          left.asInstanceOf[String] + right.asInstanceOf[Double]
-//        } else {
-//          throw new RuntimeError(operator, "Operands must be two numbers or two strings.")
-//        }
       case TokenType.MINUS =>
         checkOperands(operator,left,right)
         left.asInstanceOf[Double] - right.asInstanceOf[Double]
@@ -123,6 +126,19 @@ object Interpreter extends Expr.Visitor[Any] {
       case e : RuntimeError =>
         Lox.runtimeError(e)
     }
+  }
+
+  def interpret(statements : Array[Stmt]) = {
+    try {
+      statements.foreach(execute)
+    }catch {
+      case  e : RuntimeError =>
+        Lox.runtimeError(e)
+    }
+  }
+
+  private def execute(stmt: Stmt) = {
+    stmt.accept(this)
   }
 
   private def stringify(result : Any) : String = {

@@ -14,6 +14,11 @@ object GenerateAst extends App {
         "Literal  : value-Any",
         "Unary    : operator-Token, right-Expr"
       ))
+
+      defineAst(outputDir, "Stmt",List(
+        "Expression : expression-Expr",
+        "Print      : expression-Expr"
+      ))
     case _ =>
       println("Usage: generate_ast <output directory>")
       System.exit(64)
@@ -29,11 +34,11 @@ object GenerateAst extends App {
     writer.println()
     writer.println(s"trait $baseTrait {")
 
-    writer.println(" import Expr.Visitor")
+    writer.println(s" import $baseTrait.Visitor")
     writer.println(" def accept[A](visitor : Visitor[A]) : A ")
     writer.println("}")
 
-    writer.println("object Expr {")
+    writer.println(s"object $baseTrait {")
 
     // define visitor
     defineVisitor(writer,baseTrait,classAndFields)

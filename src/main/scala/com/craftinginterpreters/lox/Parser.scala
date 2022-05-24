@@ -2,7 +2,8 @@ package com.craftinginterpreters.lox
 
 import com.craftinginterpreters.lox.TokenType._
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+
 class ParserError extends RuntimeException
 case class Parser(tokens : Array[Token]) {
 
@@ -10,8 +11,44 @@ case class Parser(tokens : Array[Token]) {
   private var current = 0
   private val tokenLength = tokens.length
 
-  def parse() = {
-    expression()
+  def parse() : Array[Stmt] =
+    try{
+    val statements = ArrayBuffer.empty[Stmt]
+
+    while(!isAtEnd()) {
+      statements.append(statement())
+    }
+    statements.toArray
+  } catch {
+      case _ : ParserError =>
+        Array.empty
+    }
+
+  private def statement() : Stmt = {
+    // if we encounter a print token , it's a print statement
+    // else it's an expression statement
+
+    if(matchType(PRINT)){
+      printStatement()
+    } else {
+      expressiomStatement()
+    }
+  }
+
+  private def printStatement() : Stmt = {
+    val expressionResult = expression()
+    // a semicolon must come after an expression
+    consume(SEMICOLON, "Expect ';' after expression")
+
+    Stmt.Print(expressionResult)
+  }
+
+  private def expressiomStatement(): Stmt = {
+    val expressionResult = expression()
+    // a semicolon must come after an expression
+    consume(SEMICOLON, "Expect ';' after expression")
+    Stmt.Expression(expressionResult)
+
   }
   private def expression() : Expr = {
     equality()
@@ -79,7 +116,7 @@ case class Parser(tokens : Array[Token]) {
       val expr = expression()
       consume(RIGHT_PAREN,"Expect ')' after expression")
       Expr.Grouping(expr)
-    } else throw new Exception("Cannot match Primary")
+    } else throw error(peek(),"Expect Expression")
 
   }
 
@@ -96,9 +133,6 @@ case class Parser(tokens : Array[Token]) {
   }
 
   private def matchType(types : TokenType*) : Boolean = {
-    if(types.contains(SLASH)) {
-      println("got a slash")
-    }
     val res = peek().map(_.tokenType).exists(types.contains)
     if(res) advance()
     res
@@ -123,5 +157,30 @@ case class Parser(tokens : Array[Token]) {
 
   private def peek(): Option[Token] = {
     Option.when(!isAtEnd())(tokens(current))
+  }
+
+  /**
+   * It discards tokens until it thinks it has found a statement boundary.
+   * After catching a ParseError, we’ll call this and then we are hopefully back in sync.
+   * When it works well, we have discarded tokens that would have likely caused cascaded errors anyway,
+   * and now we can parse the rest of the file starting at the next statement
+   * */
+  private def synchronize()= {
+    advance()
+    def loop(isAtEnd : Boolean) : Unit = {
+      if (isAtEnd) {
+
+      } else {
+        if (previous().tokenType == SEMICOLON) {} else {
+          peek().get.tokenType match {
+            case CLASS | FUN | VAR | FOR | IF | WHILE | PRINT | RETURN =>
+            case _ => advance()
+          }
+          loop(isAtEnd)
+        }
+      }
+    }
+
+    loop(isAtEnd())
   }
 }

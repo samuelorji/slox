@@ -94,9 +94,9 @@ object Lox {
     val parser = Parser(tokens)
     val result = parser.parse()
 
-    println(result)
-
-    println(AstPrinter.print(result))
+//    println(result)
+//
+//    println(AstPrinter.print(result))
 
     Interpreter.interpret(result)
    // println(result.accept(Interpreter))
