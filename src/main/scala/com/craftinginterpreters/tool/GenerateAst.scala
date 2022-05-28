@@ -1,6 +1,7 @@
 package com.craftinginterpreters.tool
 
 import java.io.PrintWriter
+import javax.xml.crypto.Data
 
 object GenerateAst extends App {
 
@@ -9,15 +10,20 @@ object GenerateAst extends App {
       val outputDir = args.head
 
       defineAst(outputDir, "Expr", List(
+        "Assign   : name-Token, value-Expr",
         "Binary   : left-Expr, operator-Token, right-Expr",
         "Grouping : expression-Expr",
         "Literal  : value-Any",
-        "Unary    : operator-Token, right-Expr"
+        "Unary    : operator-Token, right-Expr",
+        "Variable : name-Token"
       ))
 
+        // types of statement
       defineAst(outputDir, "Stmt",List(
+        "Block      : statements-List[Stmt]",
         "Expression : expression-Expr",
-        "Print      : expression-Expr"
+        "Print      : expression-Expr",
+        "Var        : name-Token, initializer-Expr"
       ))
     case _ =>
       println("Usage: generate_ast <output directory>")
@@ -56,7 +62,7 @@ object GenerateAst extends App {
   }
 
   def defineType(writer: PrintWriter, baseTrait: String, className: String, fields: String) = {
-    writer.println(s"  case class $className(${fields.replaceAll("-"," : ")}) extends $baseTrait {")
+    writer.println(s"  final case class $className(${fields.replaceAll("-"," : ")}) extends $baseTrait {")
 
     writer.println(s"    override def accept[A](visitor : Visitor[A]): A = visitor.visit${className}${baseTrait}(this)")
 

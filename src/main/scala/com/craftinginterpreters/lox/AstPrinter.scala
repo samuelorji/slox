@@ -1,6 +1,12 @@
 package com.craftinginterpreters.lox
 
 object AstPrinter  extends Expr.Visitor[String]{
+
+
+  override def visitAssignExpr(expr: Expr.Assign): String = ???
+
+  override def visitVariableExpr(expr: Expr.Variable): String = ???
+
   private def parenthesize(name : String, expr : Expr*) : String = {
     val builder = new StringBuilder()
     builder.append("(").append(name)

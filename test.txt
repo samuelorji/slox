@@ -10,9 +10,17 @@
 
 // "hello " + 5
 // 2 / 1
-print 34 ;
-89 + ;
+//print 34 ;
+//89 + ;
 //print (40 +5);
 
-//print "one";
-//print true;
+var a = 34;
+
+var b = 45;
+
+print "one";
+print true;
+
+print (a + b);
+
+print ("hello" * 5.0);

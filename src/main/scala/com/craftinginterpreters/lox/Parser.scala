@@ -11,30 +11,90 @@ case class Parser(tokens : Array[Token]) {
   private var current = 0
   private val tokenLength = tokens.length
 
-  def parse() : Array[Stmt] =
-    try{
-    val statements = ArrayBuffer.empty[Stmt]
+  /**
+   * program        → declaration* EOF ;
 
-    while(!isAtEnd()) {
-      statements.append(statement())
+      declaration    → varDecl
+                     | statement ;
+
+      statement      → exprStmt
+                      | printStmt ;
+                      | block ;
+   * */
+  def parse() : Array[Stmt] = {
+    val statements = ArrayBuffer.empty[Stmt]
+    while (!isAtEnd()) {
+      statements.append(declaration())
     }
     statements.toArray
-  } catch {
-      case _ : ParserError =>
-        Array.empty
+  }
+
+  private def declaration() = try{
+    if(matchAndConsumeType(VAR)){
+      varDeclaration()
+    } else {
+      statement()
     }
+  } catch {
+    case _ : ParserError =>
+      synchronize()
+      null
+  }
+
+  private def varDeclaration() :Stmt = {
+
+    // tries to match
+    // var name  = "samuel ;
+    //   or
+    // var name;
+    val token = consume(IDENTIFIER, "Expect variable name")
+    var variableExpression : Expr = null
+    if(matchAndConsumeType(EQUAL)){
+      variableExpression = expression()
+
+    }
+    consume(SEMICOLON, "Expect ';' after variable declaration.");
+    Stmt.Var(token,variableExpression)
+  }
 
   private def statement() : Stmt = {
     // if we encounter a print token , it's a print statement
     // else it's an expression statement
 
-    if(matchType(PRINT)){
+    /**
+     * statement      → exprStmt
+                      | printStmt
+                      | block ;
+    block          → "{" declaration* "}" ;
+     *
+     * */
+    if(matchAndConsumeType(PRINT)){
       printStatement()
-    } else {
-      expressiomStatement()
+    } else if (matchAndConsumeType(LEFT_BRACE)){
+     Stmt.Block(block())
+    }else {
+      expressionStatement()
     }
   }
 
+  private def check(tokenType: TokenType) : Boolean = {
+    peek().exists(_.tokenType == tokenType)
+  }
+
+  private def block() : List[Stmt] = {
+    //block          → "{" declaration* "}" ;
+
+    val statements  = ListBuffer.empty[Stmt]
+
+    // while it's not a right brace and is not at the end of the file
+
+    while(!check(RIGHT_BRACE) && !isAtEnd()){
+      statements.addOne(declaration())
+    }
+    consume(RIGHT_BRACE,"Expect a '}' after block. ")
+
+    statements.toList
+  }
   private def printStatement() : Stmt = {
     val expressionResult = expression()
     // a semicolon must come after an expression
@@ -43,7 +103,7 @@ case class Parser(tokens : Array[Token]) {
     Stmt.Print(expressionResult)
   }
 
-  private def expressiomStatement(): Stmt = {
+  private def expressionStatement(): Stmt = {
     val expressionResult = expression()
     // a semicolon must come after an expression
     consume(SEMICOLON, "Expect ';' after expression")
@@ -51,13 +111,35 @@ case class Parser(tokens : Array[Token]) {
 
   }
   private def expression() : Expr = {
-    equality()
+    assignment()
+  }
+
+  private def assignment() : Expr = {
+
+    // gotta be able to distinguish between
+    // var a = 4  CORRECT
+    // a + b = c  Not correct
+    val leftHand = equality()
+
+    if (matchAndConsumeType(EQUAL)){
+      val equals = previous()
+      leftHand match {
+        case e : Expr.Variable =>
+          val right = assignment()
+          Expr.Assign(e.name, right)
+        case _ =>
+          error(Some(equals), "Invalid assignment target.")
+          leftHand
+      }
+    } else {
+      leftHand
+    }
   }
 
 
   private def equality() : Expr = {
     var expr = comparison()
-    while(matchType(BANG_EQUAL,EQUAL_EQUAL)){
+    while(matchAndConsumeType(BANG_EQUAL,EQUAL_EQUAL)){
      val operator = previous()
       val right = comparison()
       expr = Expr.Binary(expr,operator,right)
@@ -66,7 +148,7 @@ case class Parser(tokens : Array[Token]) {
   }
   private def comparison() : Expr = {
     var expr = term()
-    while(matchType(GREATER,GREATER_EQUAL,LESS,LESS_EQUAL)){
+    while(matchAndConsumeType(GREATER,GREATER_EQUAL,LESS,LESS_EQUAL)){
       val operator = previous()
       val right = term()
       expr = Expr.Binary(expr, operator,right)
@@ -75,7 +157,7 @@ case class Parser(tokens : Array[Token]) {
   }
   private def term() : Expr = {
     var expr = factor()
-    while(matchType(MINUS,PLUS)){
+    while(matchAndConsumeType(MINUS,PLUS)){
       val operator = previous()
       val right = factor()
       expr = Expr.Binary(expr,operator,right)
@@ -85,7 +167,7 @@ case class Parser(tokens : Array[Token]) {
 
   private def factor() : Expr = {
     var expr = unary()
-    while(matchType(SLASH,STAR)){
+    while(matchAndConsumeType(SLASH,STAR)){
       val operator = previous()
       val right =  unary()
       expr = Expr.Binary(expr,operator,right)
@@ -94,7 +176,7 @@ case class Parser(tokens : Array[Token]) {
   }
 
   private def unary() : Expr = {
-    if(matchType(BANG,MINUS)){
+    if(matchAndConsumeType(BANG,MINUS)){
       val operator = previous()
       val right = unary()
       Expr.Unary(operator,right)
@@ -104,15 +186,17 @@ case class Parser(tokens : Array[Token]) {
   }
 
   private def primary() : Expr = {
-    if (matchType(FALSE)){
+    if (matchAndConsumeType(FALSE)){
       Expr.Literal(false)
-    } else if (matchType(TRUE)){
+    } else if (matchAndConsumeType(TRUE)){
       Expr.Literal(true)
-    } else if (matchType(NIL)){
+    } else if (matchAndConsumeType(NIL)){
       Expr.Literal(null)
-    } else if (matchType(NUMBER,STRING)){
+    } else if (matchAndConsumeType(NUMBER,STRING)){
       Expr.Literal(previous().literal)
-    } else if(matchType(LEFT_PAREN)){
+    } else if (matchAndConsumeType(IDENTIFIER)){
+      Expr.Variable(previous())
+    } else if(matchAndConsumeType(LEFT_PAREN)){
       val expr = expression()
       consume(RIGHT_PAREN,"Expect ')' after expression")
       Expr.Grouping(expr)
@@ -120,8 +204,8 @@ case class Parser(tokens : Array[Token]) {
 
   }
 
-  private def consume(rightparen: TokenType, msg: String): Unit ={
-    if(peek().map(_.tokenType).contains(rightparen)){
+  private def consume(expected: TokenType, msg: String) : Token={
+    if(peek().map(_.tokenType).contains(expected)){
       advance()
     } else throw error(peek(),msg)
 
@@ -132,7 +216,7 @@ case class Parser(tokens : Array[Token]) {
     new ParserError
   }
 
-  private def matchType(types : TokenType*) : Boolean = {
+  private def matchAndConsumeType(types : TokenType*) : Boolean = {
     val res = peek().map(_.tokenType).exists(types.contains)
     if(res) advance()
     res

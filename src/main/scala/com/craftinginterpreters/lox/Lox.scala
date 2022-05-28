@@ -90,15 +90,18 @@ object Lox {
     val scanner = Scanner(source)
     val tokens = scanner.scanTokens
 
-   // println(s"tokens are \n${tokens.mkString("\n")}")
+   //println(s"tokens are \n${tokens.mkString("\n")}")
     val parser = Parser(tokens)
-    val result = parser.parse()
+    // parses statements
+    val statements: Array[Stmt] = parser.parse()
 
-//    println(result)
+  //  println(statements.mkString("\n"))
 //
-//    println(AstPrinter.print(result))
+    //println(AstPrinter.print(result))
 
-    Interpreter.interpret(result)
+    MatchInterpreter.interpret(statements)
+
+ //   Interpreter.interpret(result)
    // println(result.accept(Interpreter))
     //tokens.foreach(println)
   }

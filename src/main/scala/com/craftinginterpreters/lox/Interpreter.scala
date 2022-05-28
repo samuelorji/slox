@@ -4,15 +4,49 @@ import scala.reflect.ClassTag
 
 case class RuntimeError(val token: Token, val message: String) extends RuntimeException(message)
 
-object Interpreter extends Expr.Visitor[Any]  with Stmt.Visitor[Any] {
+object Interpreter extends Expr.Visitor[Any]
+  with Stmt.Visitor[Unit]  // statements don't return anything
+  {
 
+  var environment = Environment()
 
-  override def visitExpressionStmt(stmt: Stmt.Expression): Any = {
+  override def visitExpressionStmt(stmt: Stmt.Expression): Unit = {
+    println(s"got an expression statement ${stmt.expression}")
     val expressionResult = evaluate(stmt.expression)
+    println(s"result is $expressionResult")
 
   }
 
-  override def visitPrintStmt(stmt: Stmt.Print): Any = {
+
+  override def visitBlockStmt(stmt: Stmt.Block): Unit = {
+    executeBlock(stmt.statements,Environment(Some(environment)))
+  }
+
+    // each block gets its own environment
+  private def executeBlock(statements : List[Stmt], environment: Environment): Unit = {
+    // save current environment as blocks introduce their environments
+    val previous = this.environment
+    try {
+      // this block is introducing its own environment, so we set the current environment
+      // to the one for the block
+
+      // if there are multiple blocks, each will introduce its own environment
+      this.environment = environment
+      statements.foreach(execute)
+    } finally {
+      // we're done executing blocks, now set our current environment to the outer environment
+      this.environment = previous
+    }
+  }
+
+  override def visitAssignExpr(expr: Expr.Assign): Any = {
+    val exprResult = evaluate(expr.value)
+    environment.assign(expr.name,exprResult)
+    exprResult
+  }
+
+
+  override def visitPrintStmt(stmt: Stmt.Print): Unit = {
     val expressionResult = evaluate(stmt.expression)
     println(stringify(expressionResult))
   }
@@ -158,5 +192,25 @@ object Interpreter extends Expr.Visitor[Any]  with Stmt.Visitor[Any] {
           result.toString
       }
     }
+  }
+
+  override def visitVariableExpr(expr: Expr.Variable): Any = {
+    // for a variable, this will probably be invoked or called
+    // so it needs to be evaluated and returned to its caller
+
+    // example, if it were a print,
+    // visiting a print statment will evaluate the expression to be printed
+     // which will eventually come here and the result is printed by print
+
+    // to show an example, try returning anything else and see it printed
+    environment.get(expr.name)
+  }
+
+  override def visitVarStmt(stmt: Stmt.Var): Unit = {
+    var expressionValue : Any = null
+    if(stmt.initializer != null){
+      expressionValue = evaluate(stmt.initializer)
+    }
+    environment.define(stmt.name.lexeme,expressionValue)
   }
 }
