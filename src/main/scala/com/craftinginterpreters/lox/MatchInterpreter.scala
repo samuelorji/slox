@@ -36,6 +36,22 @@ object MatchInterpreter extends InterpreterHelper {
           expressionResult = evaluateExpression(initializer)
         }
         environment.define(name.lexeme,expressionResult)
+
+      case Stmt.If(cond, thenBranch, elseBranch) =>
+        val condition = evaluateExpression(cond)
+
+        if(isTruthy(condition)){
+          execute(thenBranch)
+        }else {
+          elseBranch.foreach(execute)
+        }
+
+      case Stmt.While(condition, statement) =>
+        // expression should not be memoized, but passed into the
+        // while loop so its constantly evaluated
+        while (isTruthy(evaluateExpression(condition))) {
+          execute(statement)
+        }
       case _ => throw new IllegalStateException(s"Unexpected statement type : $statement")
     }
 
@@ -163,6 +179,29 @@ object MatchInterpreter extends InterpreterHelper {
       case Expr.Variable(name) =>
         // get this variable from the environment
       environment.get(name)
+      case Expr.Logic(left, operator, right) =>
+        val leftResult = evaluateExpression(left)
+       val result =  operator.tokenType match {
+          case OR =>
+            if(isTruthy(leftResult)){
+              // or case, if left is true , return it
+              Left(leftResult)
+            } else {
+              Right()
+            }
+          case AND =>
+            if(!isTruthy(leftResult)){
+              // and case, if left is false, no need to evaluate right
+              Left(leftResult)
+            } else {
+              Right()
+            }
+          case x =>
+            throw new IllegalStateException(s"Unexpected operator type  : $x")
+        }
+
+        // only evaluate right if we don't have to return left
+        result.fold(identity, _ => evaluateExpression(right))
       case _ =>
         throw new IllegalStateException(s"Unexpected expression type : $expression")
 

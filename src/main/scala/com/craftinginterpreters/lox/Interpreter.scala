@@ -8,9 +8,17 @@ object Interpreter extends Expr.Visitor[Any]
   with Stmt.Visitor[Unit]  // statements don't return anything
   {
 
-  var environment = Environment()
 
-  override def visitExpressionStmt(stmt: Stmt.Expression): Unit = {
+    override def visitWhileStmt(stmt: Stmt.While): Unit = ???
+
+    override def visitLogicExpr(expr: Expr.Logic): Any = ???
+
+    var environment = Environment()
+
+
+    override def visitIfStmt(stmt: Stmt.If): Unit = ???
+
+    override def visitExpressionStmt(stmt: Stmt.Expression): Unit = {
     println(s"got an expression statement ${stmt.expression}")
     val expressionResult = evaluate(stmt.expression)
     println(s"result is $expressionResult")

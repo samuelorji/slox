@@ -14,15 +14,18 @@ object GenerateAst extends App {
         "Binary   : left-Expr, operator-Token, right-Expr",
         "Grouping : expression-Expr",
         "Literal  : value-Any",
+        "Logic    : left-Expr, operator-Token, right-Expr",
         "Unary    : operator-Token, right-Expr",
         "Variable : name-Token"
       ))
 
         // types of statement
       defineAst(outputDir, "Stmt",List(
+        "If         : condition-Expr, thenBranch-Stmt, elseBranch-Option[Stmt]",
         "Block      : statements-List[Stmt]",
         "Expression : expression-Expr",
         "Print      : expression-Expr",
+        "While      : expression-Expr, statement-Stmt",
         "Var        : name-Token, initializer-Expr"
       ))
     case _ =>

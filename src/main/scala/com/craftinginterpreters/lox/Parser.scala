@@ -7,6 +7,7 @@ import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 class ParserError extends RuntimeException
 case class Parser(tokens : Array[Token]) {
 
+  var count = 0
   val exprs = ListBuffer.empty[Expr]
   private var current = 0
   private val tokenLength = tokens.length
@@ -36,7 +37,8 @@ case class Parser(tokens : Array[Token]) {
       statement()
     }
   } catch {
-    case _ : ParserError =>
+    case e : ParserError =>
+      println(s"parser error : ${e}")
       synchronize()
       null
   }
@@ -63,18 +65,64 @@ case class Parser(tokens : Array[Token]) {
 
     /**
      * statement      → exprStmt
+               | ifStmt
+               | printStmt
+               | whileStmt
+               | block ;
+    whileStmt      → "while" "(" expression ")" statement ;
+     * */
+    /**
+     * statement      → exprStmt
                       | printStmt
                       | block ;
+                      | ifstmt
     block          → "{" declaration* "}" ;
      *
      * */
-    if(matchAndConsumeType(PRINT)){
+
+    if(matchAndConsumeType(IF)){
+      ifStatement()
+    }
+    else if(matchAndConsumeType(WHILE)){
+      whileStatement()
+    }
+    else if(matchAndConsumeType(PRINT)){
       printStatement()
     } else if (matchAndConsumeType(LEFT_BRACE)){
      Stmt.Block(block())
     }else {
       expressionStatement()
     }
+  }
+
+  private def whileStatement(): Stmt = {
+    /**
+     * whileStmt      → "while" "(" expression ")" statement ;
+     * */
+    consume(LEFT_PAREN,"Expect '(' after 'while'")
+    val condition = expression()
+    consume(RIGHT_PAREN, "Expect '(' after 'while'")
+
+    val whileStatement = statement()
+   // consume(SEMICOLON, "expect a ';' after a while statement")
+    Stmt.While(condition,whileStatement)
+
+  }
+  private def ifStatement() : Stmt = {
+    consume(LEFT_PAREN,"Expect '(' after 'if'")
+    val condition = expression()
+    consume(RIGHT_PAREN, "Expect ')' after if condition")
+
+    val thenBranch = statement()
+    // statement recursively calls inner ifs (if they exist)
+
+    var elseBranch : Option[Stmt] = None
+    if(matchAndConsumeType(ELSE)){
+      elseBranch = Some(statement())
+    }
+
+    Stmt.If(condition,thenBranch,elseBranch)
+
   }
 
   private def check(tokenType: TokenType) : Boolean = {
@@ -111,6 +159,13 @@ case class Parser(tokens : Array[Token]) {
 
   }
   private def expression() : Expr = {
+    /**
+     * expression     → assignment ;
+      assignment     → IDENTIFIER "=" assignment  // where identifier
+                     | logic_or ;
+      logic_or       → logic_and ( "or" logic_and )* ;
+      logic_and      → equality ( "and" equality )* ;
+     * */
     assignment()
   }
 
@@ -119,7 +174,7 @@ case class Parser(tokens : Array[Token]) {
     // gotta be able to distinguish between
     // var a = 4  CORRECT
     // a + b = c  Not correct
-    val leftHand = equality()
+    val leftHand = or()
 
     if (matchAndConsumeType(EQUAL)){
       val equals = previous()
@@ -137,6 +192,26 @@ case class Parser(tokens : Array[Token]) {
   }
 
 
+  private def or() : Expr = {
+    var expr = and()
+    while(matchAndConsumeType(OR)){
+      val operator = previous()
+      val right = and()
+
+      expr = Expr.Logic(expr,operator,right)
+    }
+    expr
+  }
+
+  private def and() : Expr = {
+    var expr = equality()
+    while(matchAndConsumeType(AND)){
+      val operator = previous()
+      val right = equality()
+      expr = Expr.Logic(expr,operator,right)
+    }
+    expr
+  }
   private def equality() : Expr = {
     var expr = comparison()
     while(matchAndConsumeType(BANG_EQUAL,EQUAL_EQUAL)){
@@ -212,6 +287,7 @@ case class Parser(tokens : Array[Token]) {
   }
 
   private def error(token : Option[Token], message : String) = {
+    println(s"$token: $message")
     Lox.error(token,message)
     new ParserError
   }
@@ -236,11 +312,11 @@ case class Parser(tokens : Array[Token]) {
 
 
   private def isAtEnd() = {
-    current >= tokenLength - 1
+    peek().exists(_.tokenType == EOF)
   }
 
   private def peek(): Option[Token] = {
-    Option.when(!isAtEnd())(tokens(current))
+    Some(tokens(current))
   }
 
   /**
@@ -256,11 +332,14 @@ case class Parser(tokens : Array[Token]) {
 
       } else {
         if (previous().tokenType == SEMICOLON) {} else {
-          peek().get.tokenType match {
+           peek().get.tokenType match {
             case CLASS | FUN | VAR | FOR | IF | WHILE | PRINT | RETURN =>
-            case _ => advance()
+              loop(true)
+            case _ => {
+              advance()
+              loop(isAtEnd)
+            }
           }
-          loop(isAtEnd)
         }
       }
     }

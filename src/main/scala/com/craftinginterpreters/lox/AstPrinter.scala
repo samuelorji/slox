@@ -3,6 +3,8 @@ package com.craftinginterpreters.lox
 object AstPrinter  extends Expr.Visitor[String]{
 
 
+  override def visitLogicExpr(expr: Expr.Logic): String = ???
+
   override def visitAssignExpr(expr: Expr.Assign): String = ???
 
   override def visitVariableExpr(expr: Expr.Variable): String = ???

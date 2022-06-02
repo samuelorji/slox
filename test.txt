@@ -13,14 +13,11 @@
 //print 34 ;
 //89 + ;
 //print (40 +5);
+//5 + 4 * 2 - 3 * 2;
+var a = 5;
+while( a > 0) {
 
-var a = 34;
-
-var b = 45;
-
-print "one";
-print true;
-
-print (a + b);
-
-print ("hello" * 5.0);
+    print ("hi " + a );
+    print (a > 0);
+    a = a - 1;
+ }
