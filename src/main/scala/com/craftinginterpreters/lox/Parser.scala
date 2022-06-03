@@ -62,26 +62,19 @@ case class Parser(tokens : Array[Token]) {
   private def statement() : Stmt = {
     // if we encounter a print token , it's a print statement
     // else it's an expression statement
-
     /**
      * statement      → exprStmt
-               | ifStmt
-               | printStmt
-               | whileStmt
-               | block ;
-    whileStmt      → "while" "(" expression ")" statement ;
-     * */
-    /**
-     * statement      → exprStmt
-                      | printStmt
-                      | block ;
-                      | ifstmt
-    block          → "{" declaration* "}" ;
-     *
+                     | forStmt
+                     | ifStmt
+                     | printStmt
+                     | whileStmt
+                     | block ;
      * */
 
     if(matchAndConsumeType(IF)){
       ifStatement()
+    } else if (matchAndConsumeType(FOR)){
+      forStatement()
     }
     else if(matchAndConsumeType(WHILE)){
       whileStatement()
@@ -95,6 +88,53 @@ case class Parser(tokens : Array[Token]) {
     }
   }
 
+  private def forStatement() : Stmt = {
+     // for (initialize ;condition ; statement )
+     // any could be ommitted
+    consume(LEFT_PAREN,"Expect '(' after 'for'")
+
+    var initializer : Option[Stmt] = None
+    if(matchAndConsumeType(VAR)){
+      initializer = Some(varDeclaration())
+    } else {
+      initializer = Some(expressionStatement())
+    }
+
+    var condition : Option[Expr] = None
+    // if the next token is not a semi colon
+    // then there is a condition
+    if(!check(SEMICOLON)){
+      condition = Some(expression())
+    }
+    consume(SEMICOLON, "Expect a ';' after a for loop condition")
+    // we expect a statement or a right parenthesis ')' afterwards
+
+    var updateStatement : Option[Expr] = None
+    if(!check(RIGHT_PAREN)){
+      updateStatement = Some(expression())
+    }
+
+    consume(RIGHT_PAREN,"Expect a ')' after for loop")
+    var body =  statement()
+    if (updateStatement.isDefined){
+      // if there is an update statement, run it after running the body
+      body = Stmt.Block(List(body,Stmt.Expression(updateStatement.get)))
+    }
+
+    // if there is no condition, assume true
+    val cond = condition.getOrElse(Expr.Literal(true))
+
+    body = Stmt.While(cond, body)
+
+    // if the initializer is defined, then create a block, running
+    // the initializer first
+    if(initializer.isDefined){
+      body = Stmt.Block(List(initializer.get, body))
+    }
+
+    body
+
+  }
   private def whileStatement(): Stmt = {
     /**
      * whileStmt      → "while" "(" expression ")" statement ;

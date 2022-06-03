@@ -4,7 +4,6 @@ case class Environment(enclosing : Option[Environment] = None ){
   private var environment = Map.empty[String,Any]
 
   def define(identifier: String, value : Any) = {
-    println(s"define cslled with $identifier and value $value")
     environment = environment.updated(identifier,value)
   }
 
