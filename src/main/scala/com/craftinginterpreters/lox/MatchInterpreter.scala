@@ -6,7 +6,20 @@ import scala.reflect.ClassTag
 
 object MatchInterpreter extends InterpreterHelper {
 
-  private var environment = Environment()
+  private val globals = Environment()
+
+  private var environment = globals
+
+  globals.define("clock", new LoxCallable {
+    override def arity: Int = 0
+
+    override def call(arguments: List[Any]): Unit =
+      System.currentTimeMillis().toDouble / 1000.0
+
+    override def toString: String = {
+      "<native fn>"
+    }
+  })
 
   def interpret(statements : Array[Stmt]) : Unit = {
     try {
@@ -202,6 +215,22 @@ object MatchInterpreter extends InterpreterHelper {
 
         // only evaluate right if we don't have to return left
         result.fold(identity, _ => evaluateExpression(right))
+
+      case Expr.Call(callee, paren, arguments) =>
+
+        callee match {
+          case callable : LoxCallable =>
+            if(arguments.length != callable.arity){
+              throw RuntimeError(paren, s"Expected ${callable.arity} arguments but got ${arguments.length} instead")
+            } else {
+              val args = arguments.map(evaluateExpression)
+              callable.call(args)
+            }
+
+          case _ =>
+            throw RuntimeError(paren, "Can only call functions and classes.");
+        }
+
       case _ =>
         throw new IllegalStateException(s"Unexpected expression type : $expression")
 

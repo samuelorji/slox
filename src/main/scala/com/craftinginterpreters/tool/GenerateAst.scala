@@ -16,6 +16,7 @@ object GenerateAst extends App {
         "Literal  : value-Any",
         "Logic    : left-Expr, operator-Token, right-Expr",
         "Unary    : operator-Token, right-Expr",
+        "Call     : callee-Expr, paren-Token , arguments-List[Expr] ",
         "Variable : name-Token"
       ))
 

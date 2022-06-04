@@ -291,13 +291,53 @@ case class Parser(tokens : Array[Token]) {
   }
 
   private def unary() : Expr = {
+    /**
+     * unary          → ( "!" | "-" ) unary | call ;
+       call           → primary ( "(" arguments? ")" )* ;
+        arguments      → expression ( "," expression )* ;
+     * */
     if(matchAndConsumeType(BANG,MINUS)){
       val operator = previous()
       val right = unary()
       Expr.Unary(operator,right)
     }else {
-      primary()
+      call()
     }
+  }
+
+  private def call() : Expr = {
+    var expr = primary()
+
+    var stop = false
+
+    while(!stop){
+      if(matchAndConsumeType(LEFT_PAREN)){
+        expr = finishCall(expr)
+      } else {
+        // break loop
+        stop = true
+      }
+    }
+    expr
+  }
+
+  private def finishCall(callee: Expr) : Expr = {
+    val arguments : ListBuffer[Expr] = ListBuffer.empty
+    // could be an empty argument list
+
+    // wanna capture (a , b, c)
+    if(!check(RIGHT_PAREN)){
+      //
+      do {
+        if (arguments.length >= 255) {
+          error(peek(), "Can't have more than 255 arguments.");
+        }
+       arguments.append(expression())
+      } while (matchAndConsumeType(COMMA))
+    }
+
+    val paren = consume(RIGHT_PAREN, "Expect a ')' after arguments ")
+    Expr.Call(callee,paren,arguments.toList)
   }
 
   private def primary() : Expr = {

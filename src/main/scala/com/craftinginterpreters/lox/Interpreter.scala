@@ -9,6 +9,8 @@ object Interpreter extends Expr.Visitor[Any]
   {
 
 
+    override def visitCallExpr(expr: Expr.Call): Any = ???
+
     override def visitWhileStmt(stmt: Stmt.While): Unit = ???
 
     override def visitLogicExpr(expr: Expr.Logic): Any = ???
