@@ -1,19 +1,19 @@
 package com.craftinginterpreters.lox
 import TokenType._
-import com.craftinginterpreters.lox.Interpreter.checkOperands
+//import com.craftinginterpreters.lox.Interpreter.checkOperands
 
 import scala.reflect.ClassTag
 
 object MatchInterpreter extends InterpreterHelper {
 
-  private val globals = Environment()
+  val globals = Environment()
 
   private var environment = globals
 
   globals.define("clock", new LoxCallable {
     override def arity: Int = 0
 
-    override def call(arguments: List[Any]): Unit =
+    override def call(interpreter: MatchInterpreter.type , arguments: List[Any]): Unit =
       System.currentTimeMillis().toDouble / 1000.0
 
     override def toString: String = {
@@ -65,6 +65,16 @@ object MatchInterpreter extends InterpreterHelper {
         while (isTruthy(evaluateExpression(condition))) {
           execute(statement)
         }
+
+      case func: Stmt.Function =>
+        // function should take a closure
+        val loxFunction = LoxFunction(func,environment)
+        environment.define(func.name.lexeme, loxFunction)
+
+      case Stmt.Return(_, value) =>
+        val returnValue = value.map(evaluateExpression)
+        throw Return(returnValue)
+
       case _ => throw new IllegalStateException(s"Unexpected statement type : $statement")
     }
 
@@ -216,7 +226,10 @@ object MatchInterpreter extends InterpreterHelper {
         // only evaluate right if we don't have to return left
         result.fold(identity, _ => evaluateExpression(right))
 
-      case Expr.Call(callee, paren, arguments) =>
+      case Expr.Call(_callee, paren, arguments) =>
+
+        val callee = evaluateExpression(_callee)
+        println(arguments)
 
         callee match {
           case callable : LoxCallable =>
@@ -224,7 +237,12 @@ object MatchInterpreter extends InterpreterHelper {
               throw RuntimeError(paren, s"Expected ${callable.arity} arguments but got ${arguments.length} instead")
             } else {
               val args = arguments.map(evaluateExpression)
-              callable.call(args)
+              try {
+                callable.call(MatchInterpreter,args)
+              } catch {
+                case ex : Return =>
+                  ex.value.orNull
+              }
             }
 
           case _ =>
@@ -243,7 +261,7 @@ object MatchInterpreter extends InterpreterHelper {
       throw  RuntimeError(token, s"Operand must be of type ${tag.runtimeClass.getName}")
     }
   }
-  private def executeBlock(statements : List[Stmt] , environment: Environment) = {
+  def executeBlock(statements : List[Stmt] , environment: Environment) = {
     // a block has its own environment
     // so before we use that, let's save the outermost environment, so once the block is
     // finished, we restore the previous environment

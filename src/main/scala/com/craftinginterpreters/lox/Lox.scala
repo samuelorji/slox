@@ -1,7 +1,6 @@
 package com.craftinginterpreters.lox
 
 
-import com.craftinginterpreters.lox.Player.expression
 
 import java.io.{BufferedReader, File, InputStreamReader}
 import scala.io.Source
@@ -95,7 +94,7 @@ object Lox {
     // parses statements
     val statements: Array[Stmt] = parser.parse()
 
-    //println(Console.GREEN + statements.mkString("\n") + Console.RESET)
+   // println(Console.GREEN + statements.mkString("\n") + Console.RESET)
 //
     //println(AstPrinter.print(result))
 

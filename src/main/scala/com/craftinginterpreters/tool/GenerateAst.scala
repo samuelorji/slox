@@ -24,9 +24,11 @@ object GenerateAst extends App {
       defineAst(outputDir, "Stmt",List(
         "If         : condition-Expr, thenBranch-Stmt, elseBranch-Option[Stmt]",
         "Block      : statements-List[Stmt]",
+        "Function   : name-Token, params-List[Token] , body-List[Stmt] ",
         "Expression : expression-Expr",
         "Print      : expression-Expr",
         "While      : expression-Expr, statement-Stmt",
+        "Return     : keyword-Token, value-Option[Expr]",
         "Var        : name-Token, initializer-Expr"
       ))
     case _ =>

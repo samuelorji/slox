@@ -15,8 +15,9 @@ case class Parser(tokens : Array[Token]) {
   /**
    * program        → declaration* EOF ;
 
-      declaration    → varDecl
-                     | statement ;
+      declaration    → funDecl
+                    | varDecl
+                    | statement ;
 
       statement      → exprStmt
                       | printStmt ;
@@ -31,9 +32,17 @@ case class Parser(tokens : Array[Token]) {
   }
 
   private def declaration() = try{
+
+    /**
+     * declaration    → funDecl
+                     | varDecl
+                     | statement ;
+     * */
     if(matchAndConsumeType(VAR)){
       varDeclaration()
-    } else {
+    } else if (matchAndConsumeType(FUN)) {
+      functionDeclaration("function")
+    }else {
       statement()
     }
   } catch {
@@ -41,6 +50,60 @@ case class Parser(tokens : Array[Token]) {
       println(s"parser error : ${e}")
       synchronize()
       null
+  }
+
+  private def functionDeclaration(kind : String) : Stmt = {
+    /**
+     * funDecl        → "fun" function ;
+       function       → IDENTIFIER "(" parameters? ")" block ;
+     * */
+
+      /**
+       * parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
+       * */
+    // fun has been consumed, next should be the function
+
+    val params  = ListBuffer.empty[Token]
+    val identifier =  consume(IDENTIFIER, s"Expected a $kind name after 'fun'")
+    consume(LEFT_PAREN, "Expected a '(' after function name")
+
+    if(!check(RIGHT_PAREN)){
+      do {
+        if(params.size > 255){
+          error(peek(), "Cannot have more than 255 arguments")
+        }
+        params.addOne(consume(IDENTIFIER, "Expect parameter name"))
+      } while (matchAndConsumeType(COMMA))
+    }
+
+    consume(RIGHT_PAREN,  "Expect ')' after parameters.")
+    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.")
+
+
+    val body = block()
+    Stmt.Function(identifier,params.toList,body)
+
+  }
+
+  private def anonFunc() : Stmt.AnonFunction = {
+    val params  = ListBuffer.empty[Token]
+    consume(LEFT_PAREN, "Expected a '(' after function name")
+
+    if(!check(RIGHT_PAREN)){
+      do {
+        if(params.size > 255){
+          error(peek(), "Cannot have more than 255 arguments")
+        }
+        params.addOne(consume(IDENTIFIER, "Expect parameter name"))
+      } while (matchAndConsumeType(COMMA))
+    }
+
+    consume(RIGHT_PAREN,  "Expect ')' after parameters.")
+    consume(LEFT_BRACE, "Expect '{' before function" + " body.")
+
+
+    val body = block()
+    Stmt.AnonFunction(params.toList,body)
   }
 
   private def varDeclaration() :Stmt = {
@@ -69,12 +132,16 @@ case class Parser(tokens : Array[Token]) {
                      | printStmt
                      | whileStmt
                      | block ;
+                     | returnStmt
+    returnStmt     → "return" expression? ";" ;
      * */
 
     if(matchAndConsumeType(IF)){
       ifStatement()
     } else if (matchAndConsumeType(FOR)){
       forStatement()
+    } else if (matchAndConsumeType(RETURN)){
+      returnStatement()
     }
     else if(matchAndConsumeType(WHILE)){
       whileStatement()
@@ -88,6 +155,24 @@ case class Parser(tokens : Array[Token]) {
     }
   }
 
+  private def returnStatement() : Stmt = {
+
+    /**
+     * returnStmt     → "return" expression? ";" ;
+     * */
+    val returnToken = previous()
+
+    var returnExpr : Option[Expr] = None
+
+    if(!check(SEMICOLON)){
+      // if a semicolon doesn't follow, then we can evaluate the
+      // expression  to get the return value
+      returnExpr = Some(expression())
+    }
+
+    consume(SEMICOLON, "Expect a ';' after a return value")
+    Stmt.Return(returnToken, returnExpr)
+  }
   private def forStatement() : Stmt = {
      // for (initialize ;condition ; statement )
      // any could be ommitted
@@ -326,7 +411,11 @@ case class Parser(tokens : Array[Token]) {
     // could be an empty argument list
 
     // wanna capture (a , b, c)
-    if(!check(RIGHT_PAREN)){
+    if(matchAndConsumeType(FUN)){
+     val func =  anonFunc()
+
+    }
+    else if(!check(RIGHT_PAREN)){
       //
       do {
         if (arguments.length >= 255) {
