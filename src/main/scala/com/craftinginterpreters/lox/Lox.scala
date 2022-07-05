@@ -65,7 +65,8 @@ object Lox {
         token.tokenType match {
           case TokenType.EOF =>
             report(token.line, " at end", message)
-          case  _ =>
+          case  TokenType.RETURN =>
+            report(token.line, s"at ${token.lexeme} ",message)
         }
       case None =>
         val line = tokenOpt.map(_.line).getOrElse(-1)
@@ -76,7 +77,7 @@ object Lox {
   }
 
   private def report(line: Int, where: String, message: String): Unit = {
-    System.err.println("[line " + line + "] Error" + where + ": " + message)
+    System.err.println("[line " + line + "] Error: " + where + ": " + message)
     hadError = true
   }
 
@@ -85,6 +86,13 @@ object Lox {
     hadRuntimeError = true
   }
 
+  def runIfNoError[A](thunk : => A) :Any = {
+    if(!hadError){
+      thunk
+    } else {
+      sys.exit(10)
+    }
+  }
   def run(source: String) = {
     val scanner = Scanner(source)
     val tokens = scanner.scanTokens
@@ -94,11 +102,17 @@ object Lox {
     // parses statements
     val statements: Array[Stmt] = parser.parse()
 
-   // println(Console.GREEN + statements.mkString("\n") + Console.RESET)
-//
-    //println(AstPrinter.print(result))
+//    println(Console.GREEN + statements.mkString("\n") + Console.RESET)
 
-     MatchInterpreter.interpret(statements)
+    runIfNoError {
+      Resolver.resolve(statements.toList)
+    }
+
+
+    runIfNoError {
+      MatchInterpreter.interpret(statements)
+    }
+
 
     // Interpreter.interpret(statements)
    // println(result.accept(Interpreter))

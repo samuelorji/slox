@@ -9,6 +9,7 @@ object MatchInterpreter extends InterpreterHelper {
   val globals = Environment()
 
   private var environment = globals
+  private var locals = Map.empty[Expr,Int]
 
   globals.define("clock", new LoxCallable {
     override def arity: Int = 0
@@ -199,9 +200,10 @@ object MatchInterpreter extends InterpreterHelper {
             !isTruthy(expressionResult)
         }
 
-      case Expr.Variable(name) =>
+      case p @ Expr.Variable(name) =>
         // get this variable from the environment
-      environment.get(name)
+        lookupVariable(name,p)
+      //environment.get(name)
       case Expr.Logic(left, operator, right) =>
         val leftResult = evaluateExpression(left)
        val result =  operator.tokenType match {
@@ -277,6 +279,21 @@ object MatchInterpreter extends InterpreterHelper {
       // block is complete, now set env to outer most env
       this.environment = previousEnvironment
     }
+  }
+
+  def resolve(variable : Expr, depth : Int) = {
+   // println(s"resolving variable $variable at depth $depth")
+    locals = locals.updated(variable,depth)
+  }
+
+  def lookupVariable(token: Token, variable: Expr) = {
+    locals.get(variable) match {
+      case Some(distance) =>
+        environment.getAt(distance, token)
+      case None =>
+        globals.get(token)
+    }
+
   }
 
 }
