@@ -10,9 +10,13 @@ case class Environment(val enclosing : Option[Environment] = None ){
   def getAt(distance : Int, token : Token) = {
     ancestor(distance).flatMap(_.environment
       .get(token.lexeme)).getOrElse{
-      println(s"env get at is $environment")
       throw RuntimeError(token,"Undefined variable '" + token.lexeme + "'.")
     }
+  }
+
+  def getAt(distance : Int, token : String) = {
+    ancestor(distance).flatMap(_.environment
+      .get(token)).get
   }
   
   def ancestor(distance : Int) : Option[Environment] = {

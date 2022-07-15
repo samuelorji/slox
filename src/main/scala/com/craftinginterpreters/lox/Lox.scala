@@ -65,7 +65,7 @@ object Lox {
         token.tokenType match {
           case TokenType.EOF =>
             report(token.line, " at end", message)
-          case  TokenType.RETURN =>
+          case  _ =>
             report(token.line, s"at ${token.lexeme} ",message)
         }
       case None =>
@@ -107,6 +107,7 @@ object Lox {
     runIfNoError {
       Resolver.resolve(statements.toList)
     }
+
 
 
     runIfNoError {

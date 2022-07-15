@@ -2,7 +2,7 @@ package com.craftinginterpreters.lox
 import scala.collection.mutable
 
 object Resolver {
-  private var scopes = mutable.Stack.empty[mutable.Map[String,Boolean]]
+  private val scopes = mutable.Stack.empty[mutable.Map[String,Boolean]]
   private var currentFunction: FunctionType = FunctionType.None
 
   sealed trait FunctionType
@@ -10,16 +10,21 @@ object Resolver {
     case object None extends FunctionType
     case object Function extends FunctionType
     case object Method extends FunctionType
+    case object Initializer extends FunctionType
   }
 
+  sealed trait ClassType
+  object ClassType {
+    case object None extends ClassType
+    case object CLASS extends ClassType
+  }
+
+  private var currentClass : ClassType = ClassType.None
 
   def evaluateExpression(expr : Expr)  = {
 
     expr match {
 
-      case expr @Expr.This(keyword) =>
-       // println(s"resolving this expression, scope is $scopes")
-        resolveLocal(expr, keyword)
       case p@Expr.Variable(name) =>
         // to prevent
         // var a = a
@@ -63,8 +68,14 @@ object Resolver {
         resolve(value)
 
       case expr @Expr.This(keyword) =>
+        currentClass match {
+          case ClassType.None =>
+            Lox.error(Some(keyword),"Cannot use 'this' outside a class")
+          case _ =>
+            resolveLocal(expr, keyword)
+        }
 
-        resolveLocal(expr, keyword)
+
 
       case _ => throw new IllegalStateException(s"don't know expr $expr")
 
@@ -93,7 +104,6 @@ object Resolver {
   }
 
   def resolveFunction(func: Stmt.Function, functionType: FunctionType) = {
-
     val enclosingFunction = currentFunction
     currentFunction = functionType
     beginScope()
@@ -142,6 +152,10 @@ object Resolver {
         currentFunction match {
           case FunctionType.None =>
             Lox.error(Some(keyword),"Can't return from top level code")
+          case FunctionType.Initializer =>
+            // report lox error if return has a value
+            value.foreach(_ => Lox.error(Some(keyword),"Can't return a value from an initializer"))
+
           case _ =>
         }
         value.foreach(resolve)
@@ -150,12 +164,21 @@ object Resolver {
         resolve(statement)
 
       case Stmt.Class(name, methods) =>
+        val enclosingClass = currentClass
+        currentClass = ClassType.CLASS
         declare(name)
         define(name)
         beginScope()
         scopes.top.put("this",true)
-        methods.foreach(resolveFunction(_,FunctionType.Method))
+        methods.foreach { method =>
+          val functionType = if(method.name.lexeme.contentEquals("init")){
+            FunctionType.Initializer
+          } else FunctionType.Method
+          resolveFunction(method,functionType)
+        }
         endScope()
+
+        currentClass = enclosingClass
 
       case _ =>
         throw new IllegalStateException(s"Unknown stmt $stmt")

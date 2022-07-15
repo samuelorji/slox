@@ -82,7 +82,8 @@ object MatchInterpreter extends InterpreterHelper {
         environment.define(name.lexeme,null)
         val methodsMap = mutable.Map.empty[String,LoxFunction]
         methods.foreach {method =>
-          val loxFunction = LoxFunction(method,environment)
+          val loxFunction = LoxFunction(method,environment,method.name.lexeme.contentEquals("init"))
+         /// val loxFunction = LoxFunction(method,environment,true)
           methodsMap.put(method.name.lexeme, loxFunction)
         }
         val klass = LoxClass(name.lexeme, methodsMap)
@@ -251,12 +252,13 @@ object MatchInterpreter extends InterpreterHelper {
               throw RuntimeError(paren, s"Expected ${callable.arity} arguments but got ${arguments.length} instead")
             } else {
               val args = arguments.map(evaluateExpression)
-              try {
-                callable.call(MatchInterpreter,args)
-              } catch {
-                case ex : Return =>
-                  ex.value.orNull
-              }
+              callable.call(MatchInterpreter,args)
+//              try {
+//                callable.call(MatchInterpreter,args)
+//              } catch {
+//                case ex : Return =>
+//                  ex.value.orNull
+//              }
             }
 
           case _ =>
