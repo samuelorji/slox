@@ -26,4 +26,15 @@
 //print(clock);
 // var a = "hello";
 
-return 5;
+class Cake {
+  taste() {
+    var adjective = "delicious";
+    print "The " + this.flavor + " cake is " + adjective + "!";
+
+//    print "The " + this.flavor ;
+  }
+}
+
+var cake = Cake();
+cake.flavor = "German chocolate";
+cake.taste();

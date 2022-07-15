@@ -9,24 +9,26 @@ object Resolver {
   object FunctionType  {
     case object None extends FunctionType
     case object Function extends FunctionType
+    case object Method extends FunctionType
   }
 
 
-  def evaluationExpression(expr : Expr)  = {
+  def evaluateExpression(expr : Expr)  = {
 
     expr match {
+
+      case expr @Expr.This(keyword) =>
+       // println(s"resolving this expression, scope is $scopes")
+        resolveLocal(expr, keyword)
       case p@Expr.Variable(name) =>
-
-
         // to prevent
         // var a = a
-
-
         if(scopes.nonEmpty && scopes.top.get(name.lexeme).contains(false)){
 
           Lox.error(Some(name),"Can't read local variable in its own initializer")
         }
 
+       // println(s"resolving variable, scopes : ${scopes}")
         resolveLocal(p, name)
 
       case p@Expr.Assign(name, value) =>
@@ -53,15 +55,28 @@ object Resolver {
       case Expr.Unary(operator, right) =>
         resolve(right)
 
+      case Expr.Get(callee, name) =>
+        resolve(callee)
+
+      case Expr.Set(obj, name, value) =>
+        resolve(obj)
+        resolve(value)
+
+      case expr @Expr.This(keyword) =>
+
+        resolveLocal(expr, keyword)
 
       case _ => throw new IllegalStateException(s"don't know expr $expr")
 
     }
   }
 
-  def resolveLocal(variable: Expr, token: Token) = {
-   // println(s"resolving local with variable $variable, token : $Token")
-    var i = scopes.size - 1
+  def resolveLocal(variable: Expr, token: Token): Unit = {
+
+    val innerScope = scopes.toArray.reverse
+
+    var i = innerScope.size - 1
+
     var stop = false
     /**
      * If we find the variable, we resolve it,
@@ -69,8 +84,8 @@ object Resolver {
      * and the scope where the variable was found
      * */
     while(!stop && i >= 0){
-      if(scopes(i).contains(token.lexeme)){
-        MatchInterpreter.resolve(variable,scopes.size - 1 - i)
+      if(innerScope(i).contains(token.lexeme)){
+        MatchInterpreter.resolve(variable,innerScope.size - 1 - i)
         stop = true
       }
       i -= 1
@@ -134,6 +149,17 @@ object Resolver {
         resolve(condition)
         resolve(statement)
 
+      case Stmt.Class(name, methods) =>
+        declare(name)
+        define(name)
+        beginScope()
+        scopes.top.put("this",true)
+        methods.foreach(resolveFunction(_,FunctionType.Method))
+        endScope()
+
+      case _ =>
+        throw new IllegalStateException(s"Unknown stmt $stmt")
+
 
     }
   }
@@ -142,7 +168,11 @@ object Resolver {
     if(scopes.nonEmpty){
       val currentScope = scopes.top
       //marked as not ready yet
-      currentScope.put(token.lexeme,false)
+      if(currentScope.contains(token.lexeme)){
+        Lox.error(Some(token), "Already a variable with this name in this scope.");
+      }else {
+        currentScope.put(token.lexeme, false)
+      }
     }
 
   }
@@ -153,7 +183,7 @@ object Resolver {
     }
   }
   def beginScope() = {
-    scopes = scopes.push(mutable.Map.empty)
+     scopes.push(mutable.Map.empty)
   }
 
   def endScope() = {
@@ -170,21 +200,7 @@ object Resolver {
   }
 
   def resolve(expr : Expr) : Any = {
-    evaluationExpression(expr)
+    evaluateExpression(expr)
   }
 
-}
-
-object Player extends App {
-  private val scopes = mutable.Stack.empty[mutable.Map[String,Boolean]]
-
-  scopes.push(mutable.Map("1" -> true))
-
-  println(scopes)
-
-  val curr = scopes.top
-
-   curr.put("2" ,false)
-
-  println(scopes)
 }

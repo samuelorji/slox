@@ -102,7 +102,7 @@ object Lox {
     // parses statements
     val statements: Array[Stmt] = parser.parse()
 
-//    println(Console.GREEN + statements.mkString("\n") + Console.RESET)
+  //  println(Console.GREEN + statements.mkString("\n") + Console.RESET)
 
     runIfNoError {
       Resolver.resolve(statements.toList)

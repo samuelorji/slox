@@ -13,6 +13,9 @@ object Expr {
   def visitLogicExpr(expr: Logic) : A
   def visitUnaryExpr(expr: Unary) : A
   def visitCallExpr(expr: Call) : A
+  def visitGetExpr(expr: Get) : A
+  def visitSetExpr(expr: Set) : A
+  def visitThisExpr(expr: This) : A
   def visitVariableExpr(expr: Variable) : A
   }
   final case class Assign(name : Token, value : Expr) extends Expr {
@@ -35,6 +38,15 @@ object Expr {
  }
   final case class Call(callee : Expr, paren : Token , arguments : List[Expr]) extends Expr {
     override def accept[A](visitor : Visitor[A]): A = visitor.visitCallExpr(this)
+ }
+  final case class Get(callee : Expr, name : Token) extends Expr {
+    override def accept[A](visitor : Visitor[A]): A = visitor.visitGetExpr(this)
+ }
+  final case class Set(obj : Expr, name : Token, value : Expr) extends Expr {
+    override def accept[A](visitor : Visitor[A]): A = visitor.visitSetExpr(this)
+ }
+  final case class This(keyword : Token) extends Expr {
+    override def accept[A](visitor : Visitor[A]): A = visitor.visitThisExpr(this)
  }
   final case class Variable(name : Token) extends Expr {
     override def accept[A](visitor : Visitor[A]): A = visitor.visitVariableExpr(this)

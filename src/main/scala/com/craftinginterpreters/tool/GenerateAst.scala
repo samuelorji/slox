@@ -17,6 +17,9 @@ object GenerateAst extends App {
         "Logic    : left-Expr, operator-Token, right-Expr",
         "Unary    : operator-Token, right-Expr",
         "Call     : callee-Expr, paren-Token , arguments-List[Expr] ",
+        "Get      : callee-Expr, name-Token",
+        "Set      : obj-Expr, name-Token, value-Expr",
+        "This     : keyword-Token",
         "Variable : name-Token"
       ))
 
@@ -29,6 +32,7 @@ object GenerateAst extends App {
         "Print      : expression-Expr",
         "While      : expression-Expr, statement-Stmt",
         "Return     : keyword-Token, value-Option[Expr]",
+        "Class      : name-Token, methods-List[Stmt.Function]",
         "Var        : name-Token, initializer-Expr"
       ))
     case _ =>

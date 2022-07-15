@@ -1,7 +1,7 @@
 package com.craftinginterpreters.lox
 
 case class Environment(val enclosing : Option[Environment] = None ){
-  private var environment = Map.empty[String,Any]
+   var environment = Map.empty[String,Any]
 
   def define(identifier: String, value : Any) = {
     environment = environment.updated(identifier,value)
@@ -9,7 +9,10 @@ case class Environment(val enclosing : Option[Environment] = None ){
   
   def getAt(distance : Int, token : Token) = {
     ancestor(distance).flatMap(_.environment
-      .get(token.lexeme)).getOrElse(throw RuntimeError(token,"Undefined variable '" + token.lexeme + "'."))
+      .get(token.lexeme)).getOrElse{
+      println(s"env get at is $environment")
+      throw RuntimeError(token,"Undefined variable '" + token.lexeme + "'.")
+    }
   }
   
   def ancestor(distance : Int) : Option[Environment] = {
@@ -27,7 +30,11 @@ case class Environment(val enclosing : Option[Environment] = None ){
   }
 
   def get(token : Token) : Any = {
-    environment.getOrElse(token.lexeme, enclosing.map(_.get(token)).getOrElse(throw RuntimeError(token,"Undefined variable '" + token.lexeme + "'.")))
+    environment.getOrElse(token.lexeme, {
+      enclosing.map(_.get(token)).getOrElse {
+        throw RuntimeError(token, "Undefined variable '" + token.lexeme + "'.")
+      }
+    })
   }
 
   def assign(token : Token , value : Any) : Unit = {
@@ -41,4 +48,6 @@ case class Environment(val enclosing : Option[Environment] = None ){
         "Undefined variable '" + token.lexeme + "'.");
     }
   }
+
+ // override def toString: String = s"$environment"
 }

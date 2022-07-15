@@ -1,5 +1,7 @@
 package com.craftinginterpreters.lox
 import TokenType._
+
+import scala.collection.mutable
 //import com.craftinginterpreters.lox.Interpreter.checkOperands
 
 import scala.reflect.ClassTag
@@ -76,6 +78,16 @@ object MatchInterpreter extends InterpreterHelper {
         val returnValue = value.map(evaluateExpression)
         throw Return(returnValue)
 
+      case Stmt.Class(name, methods) =>
+        environment.define(name.lexeme,null)
+        val methodsMap = mutable.Map.empty[String,LoxFunction]
+        methods.foreach {method =>
+          val loxFunction = LoxFunction(method,environment)
+          methodsMap.put(method.name.lexeme, loxFunction)
+        }
+        val klass = LoxClass(name.lexeme, methodsMap)
+        environment.assign(name,klass)
+
       case _ => throw new IllegalStateException(s"Unexpected statement type : $statement")
     }
 
@@ -117,6 +129,7 @@ object MatchInterpreter extends InterpreterHelper {
                 // treat as two doubles
                 leftResult.asInstanceOf[Double] + rightResult.asInstanceOf[Double]
               case _ =>
+
                 throw RuntimeError(operator, "Operands must be two numbers or two strings.")
             }
 
@@ -200,7 +213,7 @@ object MatchInterpreter extends InterpreterHelper {
             !isTruthy(expressionResult)
         }
 
-      case p @ Expr.Variable(name) =>
+      case p@Expr.Variable(name) =>
         // get this variable from the environment
         lookupVariable(name,p)
       //environment.get(name)
@@ -231,7 +244,6 @@ object MatchInterpreter extends InterpreterHelper {
       case Expr.Call(_callee, paren, arguments) =>
 
         val callee = evaluateExpression(_callee)
-        println(arguments)
 
         callee match {
           case callable : LoxCallable =>
@@ -250,6 +262,32 @@ object MatchInterpreter extends InterpreterHelper {
           case _ =>
             throw RuntimeError(paren, "Can only call functions and classes.");
         }
+
+      case Expr.Get(_callee, name) =>
+        val callee = evaluateExpression(_callee)
+        callee match {
+          case instance : LoxInstance =>
+            val method = instance.get(name)
+            method
+
+          case _ =>
+            throw  RuntimeError(name, "Only instances have properties.");
+        }
+
+      case Expr.Set(obj, name, value) =>
+        val callee = evaluateExpression(obj)
+        callee match {
+          case instance : LoxInstance =>
+            val setValue = evaluateExpression(value)
+            instance.set(name.lexeme,setValue)
+
+          case _ =>
+            throw  RuntimeError(name, "Only instances have fields.");
+        }
+
+      case expr@ Expr.This(keyword) =>
+        lookupVariable(keyword,expr)
+
 
       case _ =>
         throw new IllegalStateException(s"Unexpected expression type : $expression")
@@ -282,6 +320,7 @@ object MatchInterpreter extends InterpreterHelper {
   }
 
   def resolve(variable : Expr, depth : Int) = {
+
    // println(s"resolving variable $variable at depth $depth")
     locals = locals.updated(variable,depth)
   }

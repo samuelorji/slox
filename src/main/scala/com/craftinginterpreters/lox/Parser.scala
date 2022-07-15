@@ -34,11 +34,18 @@ case class Parser(tokens : Array[Token]) {
   private def declaration() = try{
 
     /**
-     * declaration    → funDecl
-                     | varDecl
-                     | statement ;
+    declaration    → classDecl
+               | funDecl
+               | varDecl
+               | statement ;
+
+      classDecl      → "class" IDENTIFIER "{" function* "}" ;
      * */
-    if(matchAndConsumeType(VAR)){
+
+    if(matchAndConsumeType(CLASS)){
+      classDeclaration()
+    }
+    else if(matchAndConsumeType(VAR)){
       varDeclaration()
     } else if (matchAndConsumeType(FUN)) {
       functionDeclaration("function")
@@ -52,7 +59,23 @@ case class Parser(tokens : Array[Token]) {
       null
   }
 
-  private def functionDeclaration(kind : String) : Stmt = {
+  private def classDeclaration() : Stmt = {
+  //  classDecl      → "class" IDENTIFIER "{" function* "}" ;
+
+    val identifier = consume(IDENTIFIER,"expect a class name ")
+    consume(LEFT_BRACE,"expect a '{' after class name")
+    val methods = ListBuffer.empty[Stmt.Function]
+
+    while(!check(RIGHT_BRACE) && !isAtEnd()){
+      methods.addOne(functionDeclaration("method"))
+    }
+
+    consume(RIGHT_BRACE, "expect a '}' after class body")
+
+    Stmt.Class(identifier,methods.toList)
+
+  }
+  private def functionDeclaration(kind : String) : Stmt.Function = {
     /**
      * funDecl        → "fun" function ;
        function       → IDENTIFIER "(" parameters? ")" block ;
@@ -85,26 +108,26 @@ case class Parser(tokens : Array[Token]) {
 
   }
 
-  private def anonFunc() : Stmt.AnonFunction = {
-    val params  = ListBuffer.empty[Token]
-    consume(LEFT_PAREN, "Expected a '(' after function name")
-
-    if(!check(RIGHT_PAREN)){
-      do {
-        if(params.size > 255){
-          error(peek(), "Cannot have more than 255 arguments")
-        }
-        params.addOne(consume(IDENTIFIER, "Expect parameter name"))
-      } while (matchAndConsumeType(COMMA))
-    }
-
-    consume(RIGHT_PAREN,  "Expect ')' after parameters.")
-    consume(LEFT_BRACE, "Expect '{' before function" + " body.")
-
-
-    val body = block()
-    Stmt.AnonFunction(params.toList,body)
-  }
+//  private def anonFunc() : Stmt.AnonFunction = {
+//    val params  = ListBuffer.empty[Token]
+//    consume(LEFT_PAREN, "Expected a '(' after function name")
+//
+//    if(!check(RIGHT_PAREN)){
+//      do {
+//        if(params.size > 255){
+//          error(peek(), "Cannot have more than 255 arguments")
+//        }
+//        params.addOne(consume(IDENTIFIER, "Expect parameter name"))
+//      } while (matchAndConsumeType(COMMA))
+//    }
+//
+//    consume(RIGHT_PAREN,  "Expect ')' after parameters.")
+//    consume(LEFT_BRACE, "Expect '{' before function" + " body.")
+//
+//
+//    val body = block()
+//    Stmt.AnonFunction(params.toList,body)
+//  }
 
   private def varDeclaration() :Stmt = {
 
@@ -296,6 +319,11 @@ case class Parser(tokens : Array[Token]) {
 
   private def assignment() : Expr = {
 
+    /**
+     * assignment     → ( call "." )? IDENTIFIER "=" assignment
+               | logic_or ;
+     * */
+
     // gotta be able to distinguish between
     // var a = 4  CORRECT
     // a + b = c  Not correct
@@ -303,10 +331,22 @@ case class Parser(tokens : Array[Token]) {
 
     if (matchAndConsumeType(EQUAL)){
       val equals = previous()
+      val right = assignment()
       leftHand match {
         case e : Expr.Variable =>
-          val right = assignment()
           Expr.Assign(e.name, right)
+
+          // for the case where we expect the left side to be
+        // breakfast.server.john
+        // so the whole of the left hand side should be a GET
+
+        // breakfast.server = "john"
+
+        // callee is breakfast, name is server and value is "john"
+        case get : Expr.Get =>
+          Expr.Set(get.callee, get.name,right )
+
+
         case _ =>
           error(Some(equals), "Invalid assignment target.")
           leftHand
@@ -391,6 +431,9 @@ case class Parser(tokens : Array[Token]) {
   }
 
   private def call() : Expr = {
+    /**
+     * call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
+     * */
     var expr = primary()
 
     var stop = false
@@ -398,7 +441,10 @@ case class Parser(tokens : Array[Token]) {
     while(!stop){
       if(matchAndConsumeType(LEFT_PAREN)){
         expr = finishCall(expr)
-      } else {
+      } else if (matchAndConsumeType(DOT)) {
+        val name = consume(IDENTIFIER, "expect property name after '.'.")
+        expr = Expr.Get(expr, name)
+      }else {
         // break loop
         stop = true
       }
@@ -411,11 +457,11 @@ case class Parser(tokens : Array[Token]) {
     // could be an empty argument list
 
     // wanna capture (a , b, c)
-    if(matchAndConsumeType(FUN)){
-     val func =  anonFunc()
-
-    }
-    else if(!check(RIGHT_PAREN)){
+//    if(matchAndConsumeType(FUN)){
+//     val func =  anonFunc()
+//
+//    }
+     if(!check(RIGHT_PAREN)){
       //
       do {
         if (arguments.length >= 255) {
@@ -444,6 +490,8 @@ case class Parser(tokens : Array[Token]) {
       val expr = expression()
       consume(RIGHT_PAREN,"Expect ')' after expression")
       Expr.Grouping(expr)
+    } else if (matchAndConsumeType(THIS)){
+      Expr.This(previous())
     } else throw error(peek(),"Expect Expression")
 
   }

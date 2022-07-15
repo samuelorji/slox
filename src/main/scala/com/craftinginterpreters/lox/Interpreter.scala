@@ -2,7 +2,7 @@ package com.craftinginterpreters.lox
 //
 //import scala.reflect.ClassTag
 //
-case class RuntimeError(val token: Token, val message: String) extends RuntimeException(message,null,false,false)
+case class RuntimeError(token: Token, message: String) extends RuntimeException(message,null,false,false)
 //
 //object Interpreter extends Expr.Visitor[Any]
 //  with Stmt.Visitor[Unit]  // statements don't return anything

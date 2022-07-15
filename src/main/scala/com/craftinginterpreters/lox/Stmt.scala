@@ -13,6 +13,7 @@ object Stmt {
   def visitPrintStmt(stmt: Print) : A
   def visitWhileStmt(stmt: While) : A
   def visitReturnStmt(stmt: Return) : A
+  def visitClassStmt(stmt: Class) : A
   def visitVarStmt(stmt: Var) : A
   }
   final case class If(condition : Expr, thenBranch : Stmt, elseBranch : Option[Stmt]) extends Stmt {
@@ -36,10 +37,10 @@ object Stmt {
   final case class Return(keyword : Token, value : Option[Expr]) extends Stmt {
     override def accept[A](visitor : Visitor[A]): A = visitor.visitReturnStmt(this)
  }
+  final case class Class(name : Token, methods : List[Stmt.Function]) extends Stmt {
+    override def accept[A](visitor : Visitor[A]): A = visitor.visitClassStmt(this)
+ }
   final case class Var(name : Token, initializer : Expr) extends Stmt {
     override def accept[A](visitor : Visitor[A]): A = visitor.visitVarStmt(this)
  }
-  final case class AnonFunction( params : List[Token] , body : List[Stmt]) extends Stmt {
-    override def accept[A](visitor: Visitor[A]): A = ???
-  }
 }
