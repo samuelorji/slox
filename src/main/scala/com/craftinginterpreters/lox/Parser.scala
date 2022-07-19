@@ -60,9 +60,17 @@ case class Parser(tokens : Array[Token]) {
   }
 
   private def classDeclaration() : Stmt = {
-  //  classDecl      → "class" IDENTIFIER "{" function* "}" ;
+  //  classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )?
+    //                 "{" function* "}" ;
 
+    var superClass : Option[Expr.Variable] = None
     val identifier = consume(IDENTIFIER,"expect a class name ")
+    if(matchAndConsumeType(LESS)){
+      val superClassToken= consume(IDENTIFIER,"Expect a superclass name after '<'")
+      superClass = Some(Expr.Variable(superClassToken))
+
+
+    }
     consume(LEFT_BRACE,"expect a '{' after class name")
     val methods = ListBuffer.empty[Stmt.Function]
 
@@ -72,7 +80,7 @@ case class Parser(tokens : Array[Token]) {
 
     consume(RIGHT_BRACE, "expect a '}' after class body")
 
-    Stmt.Class(identifier,methods.toList)
+    Stmt.Class(identifier,methods.toList,superClass)
 
   }
   private def functionDeclaration(kind : String) : Stmt.Function = {
@@ -476,6 +484,12 @@ case class Parser(tokens : Array[Token]) {
   }
 
   private def primary() : Expr = {
+
+    /**
+     * primary        → "true" | "false" | "nil" | "this"
+               | NUMBER | STRING | IDENTIFIER | "(" expression ")"
+               | "super" "." IDENTIFIER ;
+     * */
     if (matchAndConsumeType(FALSE)){
       Expr.Literal(false)
     } else if (matchAndConsumeType(TRUE)){
@@ -492,7 +506,12 @@ case class Parser(tokens : Array[Token]) {
       Expr.Grouping(expr)
     } else if (matchAndConsumeType(THIS)){
       Expr.This(previous())
-    } else throw error(peek(),"Expect Expression")
+    } else if (matchAndConsumeType(SUPER)){
+      val keyword = previous()
+      consume(DOT,"Expect a '.' after super")
+      val method = consume(IDENTIFIER, "Expect an super class method name after '.'")
+      Expr.Super(keyword,method)
+    }else throw error(peek(),"Expect Expression")
 
   }
 

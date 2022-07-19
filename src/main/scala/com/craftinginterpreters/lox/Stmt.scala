@@ -37,7 +37,7 @@ object Stmt {
   final case class Return(keyword : Token, value : Option[Expr]) extends Stmt {
     override def accept[A](visitor : Visitor[A]): A = visitor.visitReturnStmt(this)
  }
-  final case class Class(name : Token, methods : List[Stmt.Function]) extends Stmt {
+  final case class Class(name : Token, methods : List[Stmt.Function], superClass : Option[Expr.Variable]) extends Stmt {
     override def accept[A](visitor : Visitor[A]): A = visitor.visitClassStmt(this)
  }
   final case class Var(name : Token, initializer : Expr) extends Stmt {

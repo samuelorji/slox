@@ -26,13 +26,31 @@
 //print(clock);
 // var a = "hello";
 
+//var something = "hello";
 
-class Cake {
-  init(){
-  return "rtr";
+class Doughnut {
+  cook() {
+    print "Fry until golden brown.";
   }
 }
 
-var cake = Cake();
-var res = cake.init();
-print res;
+class BostonCream < Doughnut {
+  cook() {
+    super.cook();
+    print "Pipe full of custard and coat with chocolate.";
+  }
+}
+
+BostonCream().cook();
+
+class Other {
+
+dance(){
+super.der();
+}
+}
+
+
+var oth = Other();
+
+oth.dance();

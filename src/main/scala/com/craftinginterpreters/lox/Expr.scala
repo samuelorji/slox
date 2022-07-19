@@ -15,6 +15,7 @@ object Expr {
   def visitCallExpr(expr: Call) : A
   def visitGetExpr(expr: Get) : A
   def visitSetExpr(expr: Set) : A
+  def visitSuperExpr(expr: Super) : A
   def visitThisExpr(expr: This) : A
   def visitVariableExpr(expr: Variable) : A
   }
@@ -44,6 +45,9 @@ object Expr {
  }
   final case class Set(obj : Expr, name : Token, value : Expr) extends Expr {
     override def accept[A](visitor : Visitor[A]): A = visitor.visitSetExpr(this)
+ }
+  final case class Super(keyword : Token, method : Token) extends Expr {
+    override def accept[A](visitor : Visitor[A]): A = visitor.visitSuperExpr(this)
  }
   final case class This(keyword : Token) extends Expr {
     override def accept[A](visitor : Visitor[A]): A = visitor.visitThisExpr(this)

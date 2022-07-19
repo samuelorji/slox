@@ -78,15 +78,36 @@ object MatchInterpreter extends InterpreterHelper {
         val returnValue = value.map(evaluateExpression)
         throw Return(returnValue)
 
-      case Stmt.Class(name, methods) =>
+      case Stmt.Class(name, methods,_superClass) =>
+        val sup = _superClass.map{supClass =>
+          val superClass = evaluateExpression(supClass)
+
+          superClass match {
+            case klass : LoxClass => klass
+            case _ =>
+              //Lox.error("Cannot")
+            throw RuntimeError(supClass.name,s"${supClass.name.lexeme} is not a class, Can only extend classes")
+          }
+
+        }
         environment.define(name.lexeme,null)
+
+        _superClass.foreach{ _ =>
+          // define a new env where we store the super class, so the methods inherit it
+          environment = Environment(Some(environment))
+          environment.define("super",sup.get)
+
+        }
         val methodsMap = mutable.Map.empty[String,LoxFunction]
         methods.foreach {method =>
           val loxFunction = LoxFunction(method,environment,method.name.lexeme.contentEquals("init"))
-         /// val loxFunction = LoxFunction(method,environment,true)
           methodsMap.put(method.name.lexeme, loxFunction)
         }
-        val klass = LoxClass(name.lexeme, methodsMap)
+
+        _superClass.foreach{ _ =>
+          environment = environment.enclosing.get
+        }
+        val klass = LoxClass(name.lexeme, methodsMap,sup)
         environment.assign(name,klass)
 
       case _ => throw new IllegalStateException(s"Unexpected statement type : $statement")
@@ -261,7 +282,8 @@ object MatchInterpreter extends InterpreterHelper {
 //              }
             }
 
-          case _ =>
+          case ex =>
+            println(s"ex is $ex")
             throw RuntimeError(paren, "Can only call functions and classes.");
         }
 
@@ -289,6 +311,20 @@ object MatchInterpreter extends InterpreterHelper {
 
       case expr@ Expr.This(keyword) =>
         lookupVariable(keyword,expr)
+
+      case expr@ Expr.Super(keyword, method) =>
+        val distance = locals(expr)
+        val superClass = environment.getAt(distance,keyword).asInstanceOf[LoxClass]
+        val obj = environment.getAt(distance - 1, "this").asInstanceOf[LoxInstance]
+
+        val superMethod = superClass.findMethod(method.lexeme)
+        superMethod match {
+          case Some(method) =>
+            method.bind(obj)
+          case None =>
+            throw  RuntimeError(expr.method,
+              "Undefined property '" + expr.method.lexeme + "'.");
+        }
 
 
       case _ =>

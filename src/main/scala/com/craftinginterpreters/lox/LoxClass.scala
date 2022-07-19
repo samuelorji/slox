@@ -1,6 +1,6 @@
 package com.craftinginterpreters.lox
 
-case class LoxClass(name : String, methods : scala.collection.mutable.Map[String,LoxFunction]) extends LoxCallable {
+case class LoxClass(name : String, methods : scala.collection.mutable.Map[String,LoxFunction],superClass : Option[LoxClass]) extends LoxCallable {
 
 
   override def arity: Int =  {
@@ -8,7 +8,7 @@ case class LoxClass(name : String, methods : scala.collection.mutable.Map[String
   }
 
   override def call(interpreter: MatchInterpreter.type, arguments: List[Any]): Any = {
-    val instance = LoxInstance(this)
+    val instance = LoxInstance(this,superClass)
     val initializerOpt = findMethod("init")
     initializerOpt.map {initializer =>
       initializer.bind(instance).call(interpreter,arguments)

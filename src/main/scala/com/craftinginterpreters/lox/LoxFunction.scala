@@ -11,7 +11,7 @@ case class LoxFunction(declaration : Stmt.Function,closure : Environment, isInit
       environment.define(params.lexeme, args)
     }
 
-  //  interpreter.executeBlock(declaration.body, environment)
+    //  interpreter.executeBlock(declaration.body, environment)
 
     try {
       interpreter.executeBlock(declaration.body, environment)

@@ -17,6 +17,7 @@ object Resolver {
   object ClassType {
     case object None extends ClassType
     case object CLASS extends ClassType
+    case object SubClass extends ClassType
   }
 
   private var currentClass : ClassType = ClassType.None
@@ -74,6 +75,20 @@ object Resolver {
           case _ =>
             resolveLocal(expr, keyword)
         }
+
+      case expr @Expr.Super(keyword, method) =>
+        currentClass match {
+          case ClassType.None =>
+            Lox.error(Some(expr.keyword),
+              "Can't use 'super' outside of a class.")
+          case ClassType.CLASS =>
+            Lox.error(Some(expr.keyword),
+              "Can't use 'super' in a class with no superclass")
+          case _ =>
+
+        }
+        resolveLocal(expr,keyword)
+
 
 
 
@@ -163,11 +178,27 @@ object Resolver {
         resolve(condition)
         resolve(statement)
 
-      case Stmt.Class(name, methods) =>
+      case Stmt.Class(name, methods,_superClass) =>
+
         val enclosingClass = currentClass
         currentClass = ClassType.CLASS
+
+
         declare(name)
         define(name)
+        _superClass.foreach {superClass =>
+          if(superClass.name.lexeme.contentEquals(name.lexeme)){
+            Lox.error(_superClass.map(_.name),"A class cannot extend itself")
+          }else {
+            currentClass = ClassType.SubClass
+            resolve(superClass)
+          }
+        }
+        _superClass.foreach {_ =>
+          // begin scope to add the variable "super"
+          beginScope()
+          scopes.top.put("super",true)
+        }
         beginScope()
         scopes.top.put("this",true)
         methods.foreach { method =>
@@ -176,7 +207,15 @@ object Resolver {
           } else FunctionType.Method
           resolveFunction(method,functionType)
         }
+        // end 'this' scope
         endScope()
+
+        _superClass.foreach{_=>
+          // end scope for 'super'
+          endScope()
+
+        }
+
 
         currentClass = enclosingClass
 
