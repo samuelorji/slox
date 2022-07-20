@@ -16,7 +16,7 @@ object MatchInterpreter extends InterpreterHelper {
   globals.define("clock", new LoxCallable {
     override def arity: Int = 0
 
-    override def call(interpreter: MatchInterpreter.type , arguments: List[Any]): Unit =
+    override def call(interpreter: MatchInterpreter.type , arguments: List[Any]) =
       System.currentTimeMillis().toDouble / 1000.0
 
     override def toString: String = {
@@ -333,10 +333,14 @@ object MatchInterpreter extends InterpreterHelper {
     }
   }
 
-  private def checkOperands[A](token : Token, operands : Any*)(implicit tag : ClassTag[A]) : Unit = {
-    if(operands.forall(_.isInstanceOf[A])){
-    } else {
-      throw  RuntimeError(token, s"Operand must be of type ${tag.runtimeClass.getName}")
+  private def checkOperands[A](token : Token, operands : Any*) (implicit tag: ClassTag[A]): Unit = {
+
+   val sameType =  operands.toList.map{
+     case _ : A => true
+     case _ => false
+   }.forall(identity)
+    if(sameType){} else {
+     throw  RuntimeError(token, s"Operand must be of type ${tag.runtimeClass.getName}")
     }
   }
   def executeBlock(statements : List[Stmt] , environment: Environment) = {
